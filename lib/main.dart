@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
-import 'screens.dart';
+import 'package:islamicapp/screens.dart';
+import 'package:provider/provider.dart';
+import 'package:islamicapp/services.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ChatHistoryProvider(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

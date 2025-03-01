@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert'; // For JSON encoding/decoding
+// For JSON encoding/decoding
 import '../services.dart'; // Import the Gemini service
 import 'package:intl/intl.dart'; // Import the intl package for DateFormat
 import 'package:typeset/typeset.dart';
 import 'package:google_fonts/google_fonts.dart'; // Import Google Fonts
+import 'package:provider/provider.dart';
+import 'models.dart';
 
 class QAScreen extends StatefulWidget {
   const QAScreen({super.key});
@@ -15,15 +16,14 @@ class QAScreen extends StatefulWidget {
 
 class _QAScreenState extends State<QAScreen> {
   final TextEditingController _controller = TextEditingController();
-  final List<Message> _messages = [];
   bool _isLoading = false;
-  final ScrollController _scrollController =
-      ScrollController(); // For auto-scroll
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _loadChatHistory();
+    // Load chat history when screen initializes
+    Provider.of<ChatHistoryProvider>(context, listen: false).loadChatHistory();
   }
 
   // Helper function to get the current timestamp
@@ -35,49 +35,39 @@ class _QAScreenState extends State<QAScreen> {
     final question = _controller.text.trim();
     if (question.isEmpty) return;
 
-    setState(() {
-      _messages.add(Message(
-        text: question,
-        isUser: true,
-        timestamp: _getCurrentTimestamp(),
-      ));
-      _messages.add(Message(
-        text: 'loading',
-        isUser: false,
-        timestamp: _getCurrentTimestamp(),
-      ));
-      _isLoading = true;
-    });
+    final chatProvider =
+        Provider.of<ChatHistoryProvider>(context, listen: false);
 
+    // Add user's question
+    chatProvider.addMessage(Message(
+      text: question,
+      isUser: true,
+      timestamp: _getCurrentTimestamp(),
+    ));
+
+    // Add loading message
+    chatProvider.addMessage(Message(
+      text: 'loading',
+      isUser: false,
+      timestamp: _getCurrentTimestamp(),
+    ));
+
+    setState(() => _isLoading = true);
     _controller.clear();
-    _saveChatHistory();
 
     try {
-      final answer = await OpenRouterService().askQuestion(question);
-      setState(() {
-        _messages.removeLast(); // Remove the "loading" message
-        _messages.add(Message(
-          text: answer,
-          isUser: false,
-          timestamp: _getCurrentTimestamp(),
-        ));
-      });
+      String streamedAnswer = '';
+      await for (final chunk in OpenRouterService()
+          .streamChat(question, chatProvider.getConversationHistory())) {
+        streamedAnswer += chunk;
+        chatProvider.updateLastMessage(streamedAnswer);
+      }
     } catch (e) {
-      setState(() {
-        _messages.removeLast(); // Remove the "loading" message
-        _messages.add(Message(
-          text: 'Failed to load answer. Please try again.',
-          isUser: false,
-          timestamp: _getCurrentTimestamp(),
-        ));
-      });
+      chatProvider
+          .updateLastMessage('Failed to load answer. Please try again.');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
-
-    _saveChatHistory();
 
     // Auto-scroll to the latest message
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -89,53 +79,31 @@ class _QAScreenState extends State<QAScreen> {
     });
   }
 
-  Future<void> _saveChatHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final chatHistory =
-        _messages.map((message) => jsonEncode(message.toJson())).toList();
-    await prefs.setStringList('chatHistory', chatHistory);
-  }
-
-  Future<void> _loadChatHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final chatHistory = prefs.getStringList('chatHistory') ?? [];
-    setState(() {
-      _messages.addAll(chatHistory
-          .map((message) => Message.fromJson(jsonDecode(message)))
-          .toList());
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Islamic Asks',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: Text('Islamic Asks'),
         centerTitle: true,
         backgroundColor: Colors.teal,
-        elevation: 10, // Add elevation for drop shadow
-        shadowColor: Colors.black.withOpacity(0.5), // Customize shadow color
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController, // Attach the scroll controller
-              padding: EdgeInsets.all(8),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return AnimatedOpacity(
-                  opacity: 1.0,
-                  duration: Duration(milliseconds: 500),
-                  child: ChatBubble(
-                    text: message.text,
-                    isUser: message.isUser,
-                    timestamp: message.timestamp,
-                  ),
+            child: Consumer<ChatHistoryProvider>(
+              builder: (context, chatProvider, child) {
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: EdgeInsets.all(8),
+                  itemCount: chatProvider.messages.length,
+                  itemBuilder: (context, index) {
+                    final message = chatProvider.messages[index];
+                    return ChatBubble(
+                      text: message.text,
+                      isUser: message.isUser,
+                      timestamp: message.timestamp,
+                    );
+                  },
                 );
               },
             ),
@@ -308,28 +276,4 @@ class _LoadingDotsState extends State<LoadingDots>
       },
     );
   }
-}
-
-class Message {
-  final String text;
-  final bool isUser;
-  final String timestamp;
-
-  Message({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'text': text,
-        'isUser': isUser,
-        'timestamp': timestamp,
-      };
-
-  factory Message.fromJson(Map<String, dynamic> json) => Message(
-        text: json['text'],
-        isUser: json['isUser'],
-        timestamp: json['timestamp'],
-      );
 }
