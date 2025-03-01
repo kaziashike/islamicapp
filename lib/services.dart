@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
+import 'package:intl/intl.dart';
 
 class OpenRouterService {
   static const String _apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
@@ -148,22 +149,88 @@ In your responses, follow these guidelines:
 }
 
 class ChatHistoryProvider extends ChangeNotifier {
-  List<Message> _messages = [];
-  List<Message> get messages => _messages;
+  List<ChatSession> _sessions = [];
+  String? _activeChatId;
 
-  void addMessage(Message message) {
-    _messages.add(message);
+  List<ChatSession> get sessions => _sessions;
+  String? get activeChatId => _activeChatId;
+  ChatSession? get activeChat => _sessions.firstWhere(
+        (s) => s.id == _activeChatId,
+        orElse: () => createNewChat(),
+      );
+
+  ChatSession createNewChat() {
+    final newSession = ChatSession(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: 'New Chat',
+      timestamp: DateFormat('HH:mm').format(DateTime.now()),
+      messages: [],
+    );
+    _sessions.add(newSession);
+    _activeChatId = newSession.id;
     _saveChatHistory();
+    notifyListeners();
+    return newSession;
+  }
+
+  void setActiveChat(String chatId) {
+    _activeChatId = chatId;
     notifyListeners();
   }
 
-  void updateLastMessage(String text) {
-    if (_messages.isNotEmpty) {
-      _messages.last = Message(
-        text: text,
-        isUser: _messages.last.isUser,
-        timestamp: _messages.last.timestamp,
+  void addMessage(Message message) {
+    if (_activeChatId == null) {
+      createNewChat();
+    }
+
+    final sessionIndex = _sessions.indexWhere((s) => s.id == _activeChatId);
+    if (sessionIndex != -1) {
+      final session = _sessions[sessionIndex];
+      final updatedMessages = List<Message>.from(session.messages)
+        ..add(message);
+
+      // Update session title if this is the first user message
+      String title = session.title;
+      if (message.isUser && session.messages.isEmpty) {
+        title = ChatSession.generateTitle(message.text);
+      }
+
+      _sessions[sessionIndex] = ChatSession(
+        id: session.id,
+        title: title,
+        timestamp: message.timestamp,
+        messages: updatedMessages,
       );
+
+      _saveChatHistory();
+      notifyListeners();
+    }
+  }
+
+  void updateLastMessage(String text) {
+    if (_activeChatId == null) return;
+
+    final sessionIndex = _sessions.indexWhere((s) => s.id == _activeChatId);
+    if (sessionIndex != -1) {
+      final session = _sessions[sessionIndex];
+      if (session.messages.isEmpty) return;
+
+      final updatedMessages = List<Message>.from(session.messages);
+      final lastMessage = updatedMessages.last;
+      updatedMessages[updatedMessages.length - 1] = Message(
+        text: text,
+        isUser: lastMessage.isUser,
+        timestamp: lastMessage.timestamp,
+        chatId: lastMessage.chatId,
+      );
+
+      _sessions[sessionIndex] = ChatSession(
+        id: session.id,
+        title: session.title,
+        timestamp: session.timestamp,
+        messages: updatedMessages,
+      );
+
       _saveChatHistory();
       notifyListeners();
     }
@@ -172,21 +239,34 @@ class ChatHistoryProvider extends ChangeNotifier {
   Future<void> loadChatHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final chatHistory = prefs.getStringList('chatHistory') ?? [];
-    _messages = chatHistory
-        .map((message) => Message.fromJson(jsonDecode(message)))
+    _sessions = chatHistory
+        .map((session) => ChatSession.fromJson(jsonDecode(session)))
         .toList();
+
+    // Set active chat to most recent if none selected
+    if (_activeChatId == null && _sessions.isNotEmpty) {
+      _activeChatId = _sessions.last.id;
+    }
+
     notifyListeners();
   }
 
   Future<void> _saveChatHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final chatHistory =
-        _messages.map((message) => jsonEncode(message.toJson())).toList();
+        _sessions.map((session) => jsonEncode(session.toJson())).toList();
     await prefs.setStringList('chatHistory', chatHistory);
   }
 
   List<Map<String, String>> getConversationHistory() {
-    return _messages
+    if (_activeChatId == null) return [];
+
+    final session = _sessions.firstWhere(
+      (s) => s.id == _activeChatId,
+      orElse: () => createNewChat(),
+    );
+
+    return session.messages
         .map((message) => {
               'role': message.isUser ? 'user' : 'assistant',
               'content': message.text,

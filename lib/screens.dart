@@ -32,15 +32,24 @@ class _QAScreenState extends State<QAScreen> {
   @override
   void initState() {
     super.initState();
-    // Load chat history when screen initializes
-    Provider.of<ChatHistoryProvider>(context, listen: false).loadChatHistory();
-    // Scroll to bottom after chat history is loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    _controller.addListener(_scrollToBottom);
+    Provider.of<ChatHistoryProvider>(context, listen: false)
+        .loadChatHistory()
+        .then((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    });
   }
 
-  // Helper function to get the current timestamp
+  @override
+  void dispose() {
+    _controller.removeListener(_scrollToBottom);
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   String _getCurrentTimestamp() {
-    return DateFormat('HH:mm').format(DateTime.now()); // Format: 14:30
+    return DateFormat('HH:mm').format(DateTime.now());
   }
 
   Future<void> _askQuestion() async {
@@ -49,20 +58,21 @@ class _QAScreenState extends State<QAScreen> {
 
     final chatProvider =
         Provider.of<ChatHistoryProvider>(context, listen: false);
+    final chatId = chatProvider.activeChatId ?? chatProvider.createNewChat().id;
 
-    // Add user's question
     chatProvider.addMessage(Message(
       text: question,
       isUser: true,
       timestamp: _getCurrentTimestamp(),
+      chatId: chatId,
     ));
     _scrollToBottom();
 
-    // Add loading message
     chatProvider.addMessage(Message(
       text: 'loading',
       isUser: false,
       timestamp: _getCurrentTimestamp(),
+      chatId: chatId,
     ));
     _scrollToBottom();
 
@@ -94,17 +104,22 @@ class _QAScreenState extends State<QAScreen> {
         centerTitle: true,
         backgroundColor: Colors.teal,
       ),
+      drawer: ChatDrawer(),
       body: Column(
         children: [
           Expanded(
             child: Consumer<ChatHistoryProvider>(
               builder: (context, chatProvider, child) {
+                final activeChat = chatProvider.activeChat;
+                if (activeChat == null) {
+                  return Center(child: Text('Start a new chat'));
+                }
                 return ListView.builder(
                   controller: _scrollController,
                   padding: EdgeInsets.all(8),
-                  itemCount: chatProvider.messages.length,
+                  itemCount: activeChat.messages.length,
                   itemBuilder: (context, index) {
-                    final message = chatProvider.messages[index];
+                    final message = activeChat.messages[index];
                     return ChatBubble(
                       text: message.text,
                       isUser: message.isUser,
@@ -134,7 +149,7 @@ class _QAScreenState extends State<QAScreen> {
                         horizontal: 20,
                       ),
                     ),
-                    onSubmitted: (_) => _askQuestion(), // Send on "Enter"
+                    onSubmitted: (_) => _askQuestion(),
                   ),
                 ),
                 SizedBox(width: 8),
@@ -145,6 +160,72 @@ class _QAScreenState extends State<QAScreen> {
                   onPressed: _isLoading ? null : _askQuestion,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ChatDrawer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.teal,
+            ),
+            child: Center(
+              child: Text(
+                'Chat History',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.add),
+            title: Text('New Chat'),
+            onTap: () {
+              final provider =
+                  Provider.of<ChatHistoryProvider>(context, listen: false);
+              provider.createNewChat();
+              Navigator.pop(context); // Close drawer
+            },
+          ),
+          Divider(),
+          Expanded(
+            child: Consumer<ChatHistoryProvider>(
+              builder: (context, chatProvider, child) {
+                return ListView.builder(
+                  itemCount: chatProvider.sessions.length,
+                  itemBuilder: (context, index) {
+                    final session = chatProvider
+                        .sessions[chatProvider.sessions.length - 1 - index];
+                    final isActive = session.id == chatProvider.activeChatId;
+
+                    return ListTile(
+                      title: Text(
+                        session.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(session.timestamp),
+                      selected: isActive,
+                      selectedTileColor: Colors.teal.withOpacity(0.1),
+                      onTap: () {
+                        chatProvider.setActiveChat(session.id);
+                        Navigator.pop(context); // Close drawer
+                      },
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
