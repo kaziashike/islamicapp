@@ -19,11 +19,23 @@ class _QAScreenState extends State<QAScreen> {
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     // Load chat history when screen initializes
     Provider.of<ChatHistoryProvider>(context, listen: false).loadChatHistory();
+    // Scroll to bottom after chat history is loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
   // Helper function to get the current timestamp
@@ -44,6 +56,7 @@ class _QAScreenState extends State<QAScreen> {
       isUser: true,
       timestamp: _getCurrentTimestamp(),
     ));
+    _scrollToBottom();
 
     // Add loading message
     chatProvider.addMessage(Message(
@@ -51,6 +64,7 @@ class _QAScreenState extends State<QAScreen> {
       isUser: false,
       timestamp: _getCurrentTimestamp(),
     ));
+    _scrollToBottom();
 
     setState(() => _isLoading = true);
     _controller.clear();
@@ -61,22 +75,15 @@ class _QAScreenState extends State<QAScreen> {
           .streamChat(question, chatProvider.getConversationHistory())) {
         streamedAnswer += chunk;
         chatProvider.updateLastMessage(streamedAnswer);
+        _scrollToBottom();
       }
     } catch (e) {
       chatProvider
           .updateLastMessage('Failed to load answer. Please try again.');
+      _scrollToBottom();
     } finally {
       setState(() => _isLoading = false);
     }
-
-    // Auto-scroll to the latest message
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
   }
 
   @override
