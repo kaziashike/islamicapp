@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' show ThemeMode;
+
 class Message {
   final String text;
   final bool isUser;
@@ -23,6 +25,67 @@ class Message {
         isUser: json['isUser'],
         timestamp: json['timestamp'],
         chatId: json['chatId'],
+      );
+}
+
+enum AppLanguage {
+  english,
+  bangla,
+  chinese;
+
+  String get displayName {
+    switch (this) {
+      case AppLanguage.english:
+        return 'English';
+      case AppLanguage.bangla:
+        return 'বাংলা';
+      case AppLanguage.chinese:
+        return '中文';
+    }
+  }
+
+  String get languageCode {
+    switch (this) {
+      case AppLanguage.english:
+        return 'en';
+      case AppLanguage.bangla:
+        return 'bn';
+      case AppLanguage.chinese:
+        return 'zh';
+    }
+  }
+}
+
+extension ThemeModeExtension on ThemeMode {
+  String get displayName {
+    switch (this) {
+      case ThemeMode.light:
+        return 'Light Mode';
+      case ThemeMode.dark:
+        return 'Dark Mode';
+      case ThemeMode.system:
+        return 'System Theme';
+    }
+  }
+}
+
+class AppSettings {
+  final AppLanguage language;
+  final ThemeMode themeMode;
+
+  AppSettings({
+    this.language = AppLanguage.english,
+    this.themeMode = ThemeMode.system,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'language': language.index,
+        'themeMode': themeMode.index,
+      };
+
+  factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
+        language: AppLanguage.values[json['language'] ?? 0],
+        themeMode: ThemeMode.values[json['themeMode'] ?? 2],
       );
 }
 

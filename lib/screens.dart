@@ -195,7 +195,18 @@ class ChatDrawer extends StatelessWidget {
               final provider =
                   Provider.of<ChatHistoryProvider>(context, listen: false);
               provider.createNewChat();
-              Navigator.pop(context); // Close drawer
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.settings),
+            title: Text('Settings'),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => SettingsDialog(),
+              );
             },
           ),
           Divider(),
@@ -220,7 +231,7 @@ class ChatDrawer extends StatelessWidget {
                       selectedTileColor: Colors.teal.withOpacity(0.1),
                       onTap: () {
                         chatProvider.setActiveChat(session.id);
-                        Navigator.pop(context); // Close drawer
+                        Navigator.pop(context);
                       },
                     );
                   },
@@ -229,6 +240,84 @@ class ChatDrawer extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SettingsDialog extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Settings',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            SizedBox(height: 16),
+            Consumer<SettingsProvider>(
+              builder: (context, settings, child) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Language',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButton<AppLanguage>(
+                    value: settings.language,
+                    isExpanded: true,
+                    items: AppLanguage.values.map((lang) {
+                      return DropdownMenuItem(
+                        value: lang,
+                        child: Text(lang.displayName),
+                      );
+                    }).toList(),
+                    onChanged: (lang) {
+                      if (lang != null) {
+                        settings.setLanguage(lang);
+                      }
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Theme',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButton<ThemeMode>(
+                    value: settings.themeMode,
+                    isExpanded: true,
+                    items: ThemeMode.values.map((mode) {
+                      return DropdownMenuItem(
+                        value: mode,
+                        child: Text(mode.displayName),
+                      );
+                    }).toList(),
+                    onChanged: (mode) {
+                      if (mode != null) {
+                        settings.setThemeMode(mode);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Close'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

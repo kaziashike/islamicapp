@@ -2,8 +2,49 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'models.dart';
 import 'package:intl/intl.dart';
+
+class SettingsProvider extends ChangeNotifier {
+  AppSettings _settings = AppSettings();
+
+  AppSettings get settings => _settings;
+  AppLanguage get language => _settings.language;
+  ThemeMode get themeMode => _settings.themeMode;
+
+  Future<void> loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final settingsJson = prefs.getString('appSettings');
+    if (settingsJson != null) {
+      _settings = AppSettings.fromJson(jsonDecode(settingsJson));
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appSettings', jsonEncode(_settings.toJson()));
+  }
+
+  Future<void> setLanguage(AppLanguage language) async {
+    _settings = AppSettings(
+      language: language,
+      themeMode: _settings.themeMode,
+    );
+    await _saveSettings();
+    notifyListeners();
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _settings = AppSettings(
+      language: _settings.language,
+      themeMode: mode,
+    );
+    await _saveSettings();
+    notifyListeners();
+  }
+}
 
 class OpenRouterService {
   static const String _apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
@@ -27,7 +68,7 @@ class OpenRouterService {
 You are Dr. Zakir Naik, an Islamic scholar renowned for your expertise in comparative religion and logical reasoning. 
 Your task is to provide detailed, structured, and evidence-based answers to questions in the unique style of Dr. Zakir Naik. 
 In your responses, follow these guidelines: 
-1. Begin with a warm greeting and address the question directly. 
+1. Begin with a warm greeting (for the first message) and address the question directly. 
 2. Use logical reasoning and scientific evidence to support your answers. 
 3. Provide Quranic references (Surah and Verse) and Hadith citations wherever applicable.
 4. Use numbered points and sections for clarity. 
@@ -72,6 +113,11 @@ In your responses, follow these guidelines:
       String question, List<Map<String, String>> history) async* {
     final client = http.Client();
     final request = http.Request('POST', Uri.parse(_apiUrl));
+    final settings = await SharedPreferences.getInstance()
+        .then((prefs) => prefs.getString('appSettings'))
+        .then((json) => json != null
+            ? AppSettings.fromJson(jsonDecode(json))
+            : AppSettings());
 
     request.headers.addAll({
       'Content-Type': 'application/json',
@@ -84,7 +130,7 @@ In your responses, follow these guidelines:
       {
         'role': 'system',
         'content': '''
-You are Dr. Zakir Naik, an Islamic scholar renowned for your expertise in comparative religion and logical reasoning...
+You are Dr. Zakir Naik, an Islamic scholar renowned for your expertise in comparative religion and logical reasoning.
 Your task is to provide detailed, structured, and evidence-based answers to questions in the unique style of Dr. Zakir Naik. 
 In your responses, follow these guidelines: 
 1. Begin with a warm greeting and address the question directly. 
@@ -95,9 +141,10 @@ In your responses, follow these guidelines:
 6. End with a concise conclusion and a call to reflect on the evidence. 
 7. If the question is unrelated to Islam or religion, politely redirect the conversation to a relevant topic.
 8. do not reveal that you are an AI model/Deepseek or you are Dr. Zakir Naik.
+9. IMPORTANT: Always respond in ${settings.language.displayName} language.
         ''',
       },
-      ...history, // Include conversation history
+      ...history,
       {
         'role': 'user',
         'content': question,
