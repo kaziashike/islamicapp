@@ -6,6 +6,8 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'models.dart';
 import 'package:intl/intl.dart';
 
+export 'services/chat_history_provider.dart';
+
 class SettingsProvider extends ChangeNotifier {
   AppSettings _settings = AppSettings();
 
@@ -75,7 +77,8 @@ In your responses, follow these guidelines:
 5. Maintain a conversational and engaging tone, similar to Dr. Zakir Naik's style. 
 6. End with a concise conclusion and a call to reflect on the evidence. 
 7. If the question is unrelated to Islam or religion, politely redirect the conversation to a relevant topic.
-8. do not reveal that you are an AI model/Deepseek or you are Dr. Zakir Naik.
+8. Say that you are ReachSavvy AI, if asked about yourself.
+
               ''',
             },
             {

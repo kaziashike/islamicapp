@@ -123,7 +123,7 @@ class ChatSession {
     // Take first 30 characters or up to first newline
     String title = firstMessage.split('\n')[0];
     if (title.length > 30) {
-      title = title.substring(0, 30) + '...';
+      title = '${title.substring(0, 30)}...';
     }
     return title;
   }

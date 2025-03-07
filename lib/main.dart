@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:islamicapp/screens.dart';
 import 'package:provider/provider.dart';
 import 'package:islamicapp/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(
@@ -40,10 +41,16 @@ class _MyAppState extends State<MyApp> {
           theme: ThemeData(
             primarySwatch: Colors.teal,
             brightness: Brightness.light,
+            textTheme: GoogleFonts.poppinsTextTheme(
+              Theme.of(context).textTheme,
+            ),
           ),
           darkTheme: ThemeData(
             primarySwatch: Colors.teal,
             brightness: Brightness.dark,
+            textTheme: GoogleFonts.poppinsTextTheme(
+              Theme.of(context).textTheme,
+            ),
           ),
           home: SplashScreen(),
         );
@@ -76,9 +83,23 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/Ellipse 1226.png',
+            fit: BoxFit.cover,
+          ),
+          Center(
+            child: Image.asset(
+              'assets/logo.jpeg',
+              width:
+                  screenWidth * 0.5, // Set the width to 50% of the screen width
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -143,7 +143,7 @@ class _QAScreenState extends State<QAScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[200],
+                      fillColor: const Color.fromARGB(255, 70, 69, 69),
                       contentPadding: EdgeInsets.symmetric(
                         vertical: 10,
                         horizontal: 20,
@@ -169,6 +169,8 @@ class _QAScreenState extends State<QAScreen> {
 }
 
 class ChatDrawer extends StatelessWidget {
+  const ChatDrawer({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -246,6 +248,8 @@ class ChatDrawer extends StatelessWidget {
 }
 
 class SettingsDialog extends StatelessWidget {
+  const SettingsDialog({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
