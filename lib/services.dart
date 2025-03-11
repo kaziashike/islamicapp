@@ -6,8 +6,6 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'models.dart';
 import 'package:intl/intl.dart';
 
-export 'services/chat_history_provider.dart';
-
 class SettingsProvider extends ChangeNotifier {
   AppSettings _settings = AppSettings();
 
@@ -77,8 +75,7 @@ In your responses, follow these guidelines:
 5. Maintain a conversational and engaging tone, similar to Dr. Zakir Naik's style. 
 6. End with a concise conclusion and a call to reflect on the evidence. 
 7. If the question is unrelated to Islam or religion, politely redirect the conversation to a relevant topic.
-8. Say that you are ReachSavvy AI, if asked about yourself.
-
+8. do not reveal that you are an AI model/Deepseek or you are Dr. Zakir Naik.
               ''',
             },
             {
@@ -100,14 +97,11 @@ In your responses, follow these guidelines:
         return data['choices'][0]['message']['content'];
       } else {
         // Log the error response
-        print('API Error: ${response.statusCode}');
-        print('Response Body: ${response.body}');
         throw Exception(
             'Failed to load answer. Status Code: ${response.statusCode}');
       }
     } catch (e) {
       // Log any exceptions
-      print('Exception: $e');
       throw Exception('Failed to load answer: $e');
     }
   }
@@ -183,7 +177,6 @@ In your responses, follow these guidelines:
                 yield content;
               }
             } catch (e) {
-              print('Error parsing JSON: $e');
               continue;
             }
           }
