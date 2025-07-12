@@ -1,0 +1,2 @@
+C:/Users/ItachiAsh/Documents/islamicapp/android/app/.cxx/RelWithDebInfo/1r5n1770/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/ItachiAsh/Documents/islamicapp/android/app/.cxx/RelWithDebInfo/1r5n1770/armeabi-v7a/CMakeFiles/rebuild_cache.dir
