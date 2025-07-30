@@ -129,6 +129,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeInAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -137,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen>
     _navigateToHome();
   }
 
-  /// Sets up the fade-in animation for the splash screen
+  /// Sets up the fade-in and scale animations for the splash screen
   void _setupAnimations() {
     _controller = AnimationController(
       duration: const Duration(seconds: 2),
@@ -146,6 +147,9 @@ class _SplashScreenState extends State<SplashScreen>
 
     _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
 
     _controller.forward();
@@ -186,7 +190,7 @@ class _SplashScreenState extends State<SplashScreen>
               fit: BoxFit.cover,
               color: isDark
                   ? Colors.white10
-                  : Colors.black.withValues(alpha: 0.05),
+                  : Colors.black.withOpacity(0.05),
               colorBlendMode: BlendMode.srcATop,
             ),
             // Content
@@ -194,10 +198,25 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // App logo
-                  Image.asset(
-                    'assets/logo.jpeg',
-                    width: size.width * 0.4,
+                  // Animated App logo (40% smaller)
+                  ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Image.asset(
+                      'assets/logo.jpeg',
+                      width: size.width * 0.24, // 40% smaller than before
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FadeTransition(
+                    opacity: _fadeInAnimation,
+                    child: Text(
+                      'Welcome to Islamic AI Chat',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: isDark ? Colors.white : Colors.teal[900],
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   // Loading indicator

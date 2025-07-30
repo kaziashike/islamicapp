@@ -1,15 +1,16 @@
+
 import 'package:flutter/material.dart';
 import '../services.dart';
+import '../widgets.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   final List<ChatMessage> _messages = [];
   final OpenRouterService _service = OpenRouterService();
@@ -17,7 +18,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() async {
     if (_controller.text.trim().isEmpty) return;
-
     final question = _controller.text;
     _controller.clear();
 
@@ -25,10 +25,19 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(ChatMessage(
         text: question,
         isUser: true,
+        animation: AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 400),
+        ),
       ));
+      _messages.last.animation?.forward();
       _messages.add(ChatMessage(
         text: '',
         isUser: false,
+        animation: AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 400),
+        ),
       ));
       _isTyping = true;
     });
@@ -41,6 +50,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _messages.last.text = fullResponse;
         });
       }
+      _messages.last.animation?.forward();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -50,7 +60,12 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.add(ChatMessage(
           text: 'Error: Failed to get response',
           isUser: false,
+          animation: AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 400),
+          ),
         ));
+        _messages.last.animation?.forward();
       });
     } finally {
       setState(() {
@@ -62,79 +77,100 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Chat with AI')),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return _messages[index];
-              },
-            ),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Islamic AI Chat'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF009688), Color(0xFF80CBC4)],
           ),
-          if (_isTyping) LinearProgressIndicator(),
-          Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Ask a question...',
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    return FadeTransition(
+                      opacity: _messages[index].animation?.drive(CurveTween(curve: Curves.easeIn)) ?? const AlwaysStoppedAnimation(1.0),
+                      child: ChatBubble(
+                        text: _messages[index].text,
+                        isUser: _messages[index].isUser,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (_isTyping)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Material(
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(30),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
                     ),
-                    onSubmitted: (value) => _sendMessage(),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: TextField(
+                              controller: _controller,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Ask a question...'
+                              ),
+                              onSubmitted: (value) => _sendMessage(),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: CircleAvatar(
+                            backgroundColor: Colors.teal,
+                            child: IconButton(
+                              icon: const Icon(Icons.send, color: Colors.white),
+                              onPressed: _sendMessage,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ignore: must_be_immutable
-class ChatMessage extends StatelessWidget {
+class ChatMessage {
   String text;
   final bool isUser;
+  final AnimationController? animation;
 
   ChatMessage({
-    super.key,
     required this.text,
     required this.isUser,
+    this.animation,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isUser) CircleAvatar(child: Icon(Icons.android)),
-          SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isUser ? Colors.blue[100] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(text),
-            ),
-          ),
-          SizedBox(width: 8),
-          if (isUser) CircleAvatar(child: Icon(Icons.person)),
-        ],
-      ),
-    );
-  }
 }

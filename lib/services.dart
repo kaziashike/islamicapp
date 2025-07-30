@@ -49,7 +49,7 @@ class SettingsProvider extends ChangeNotifier {
 class OpenRouterService {
   static const String _apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
   static const String _apiKey =
-      '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'; // Replace with your API key
+      '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'; // Replace with your API key
 
   Future<String> askQuestion(String question) async {
     try {
